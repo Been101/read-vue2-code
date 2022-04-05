@@ -1,0 +1,19 @@
+{
+  "name": "vue-demo",
+  "version": "1.0.0",
+  "description": "rollup @babel/core 转义的，但是没有转义功能，需要转义插件 rollup-plugin-babel rollup 和 babel 关联 @babel/preset-env 转义插件，高级语法转低级语法",
+  "main": "index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "rollup": "^2.70.1",
+    "rollup-plugin-babel": "^4.4.0",
+    "@babel/core": "@7.17.8",
+    "@babel/preset-env": "7.16.11"
+  },
+  "scripts": {
+    "dev": "rollup -c -w"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
