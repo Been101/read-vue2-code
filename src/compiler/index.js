@@ -1,36 +1,18 @@
 import { parserHTML } from './parser';
-
-function genProps(attrs) {
-  // {key:val, key: val}
-  let str = ''
-  for(let i = 0; i< attrs.length; i++) {
-    // str
-  }
-}
-
-
-function generate(ast) {
-  const code = `_c('${ast.tag}', ${
-    ast.attrs.length ? '{}' : 'undefined'
-  },${
-    ast.children ? '[]' : ''
-  })`
-
-  return code
-}
+import { generate } from './generate';
 
 export function compileToFunction(template) {
 
   // 1. 将模板变成 ast 语法树
   let ast = parserHTML(template)
   console.log(ast);
-
   // 代码优化， 标记静态节点
-
 
   // 2. 代码生成
   const code = generate(ast)
   console.log(code, '-generate-code');
+  let render = new Function(`with(this){return ${code}}`)
+  console.log(render.toString());
   
   /**
    * 1. 编译原理

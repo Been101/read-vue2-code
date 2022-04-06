@@ -9,7 +9,7 @@ const attribute = /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s
 console.log(`aaa=xxx`.match(attribute)); // [1] 属性的key  [3] ||  [4] || [5] 属性的值
 
 const startTagClose = /^\s*(\/?)>/; // 匹配标签结束的  />  >
-const defaultTagRE = /\{\{((?:.|\r?\n)+?)\}\}/g;  // {{ xxx }}
+
 
 // vue3 的编译原理比 vue2 里好很多， 没有这么多正则了
 
