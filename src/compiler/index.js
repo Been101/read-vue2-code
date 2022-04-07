@@ -11,8 +11,9 @@ export function compileToFunction(template) {
   // 2. 代码生成
   const code = generate(ast)
   console.log(code, '-generate-code');
-  let render = new Function(`with(this){return ${code}}`)
+  const render = new Function(`with(this){return ${code}}`)
   console.log(render.toString());
+  return render;
   
   /**
    * 1. 编译原理

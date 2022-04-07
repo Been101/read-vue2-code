@@ -1,5 +1,6 @@
 
 import babel from 'rollup-plugin-babel' 
+import { nodeResolve } from '@rollup/plugin-node-resolve';
 export default {
   input: 'src/index.js',
   output: {
@@ -9,6 +10,7 @@ export default {
     sourcemap: true
   },
   plugins: [
+    nodeResolve(),
     babel({ 
       exclude: 'node_modules/**' // glob 写法去掉 node_modules 下的所有文件。
     })
