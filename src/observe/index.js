@@ -1,5 +1,6 @@
 import { isArray, isObject } from "../utils";
 import { arrayMethods } from "./array";
+import Dep from "./dep";
 
 class Observer {
   constructor(value) {
@@ -49,8 +50,13 @@ class Observer {
 
 function defineReactive(obj, key, value) { // vue2 慢的原因主要在这个方法中
   observe(value) // 递归进行观测数据，不管有多少层，我都进行 defineProperty
+
+  let dep = new Dep()
   Object.defineProperty(obj, key, {
     get() {
+      if(Dep.target) {
+        dep.depend()
+      }
       return value; // 闭包，此 value 会向上层的 value 进行查找
     },
     set(newValue) { // 如果设置的是一个对象那么会再次进行劫持
@@ -65,6 +71,7 @@ function defineReactive(obj, key, value) { // vue2 慢的原因主要在这个�
       console.log(`修改了${key}`);
       observe(newValue); // 
       value = newValue
+      dep.notify()
     }
   })
 }

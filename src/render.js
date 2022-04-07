@@ -10,7 +10,7 @@ export function renderMixin(Vue) {
   Vue.prototype._v = function (text) {
     console.log(arguments);
     const vm = this;
-    return createText(vm, text); // 描述虚拟节点式属于那个实例的
+    return createText(vm, text); // 描述虚拟节点是属于那个实例的
   }
   Vue.prototype._s = function (val) { // JSON.stringify()
     console.log(arguments);

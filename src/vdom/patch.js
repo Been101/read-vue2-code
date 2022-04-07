@@ -7,6 +7,7 @@ export function patch(el, vnode) {
   parentNode.insertBefore(elm, el.nextSibling); // el.nextSibling 不存在就是 null, 如果为 null i女色人Before 就是 appendChild 
 
   parentNode.removeChild(el)
+  return elm;
 }
 
 
