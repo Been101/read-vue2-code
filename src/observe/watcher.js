@@ -1,4 +1,5 @@
 import Dep from "./dep";
+import { queueWatcher } from "./scheduler";
 let id = 0;
 class Watcher {
   constructor(vm, fn, cb, options) {  // 要把 dep 放到  watcher 中
@@ -29,12 +30,19 @@ class Watcher {
       dep.addSub(this)
     }
   }
-
-  update() {
+// 不论是对象还是数组的更新都会走这个 update 函数
+  update() { //  每次更新数据都会同步调用这个 update 方法， 我可以将更新的逻辑缓存起来， 等会同步更新数据的逻辑执行完毕后，依次调用（有去重的逻辑）
 
     console.log('update')
-    // 可以做异步更新
-    this.get();
+    // 可以做异步更新 // vue.nextTick [fn1, fn2, fn3] 相同的更新的话，只调用最后一个更新
+    // this.get();  
+    console.log('缓存更新的地方');
+    queueWatcher(this)
+  }
+
+  run() {
+    console.log('真正更新的地方');
+    this.get() // 延后执行更新逻辑
   }
 
 }
