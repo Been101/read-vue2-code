@@ -4,6 +4,10 @@ import Dep from "./dep";
 
 class Observer {
   constructor(value) {
+
+  // 数组 如何依赖收集， 而且数组更新的时候如何触发更新?
+    // 如果给一个对象增添一个不存在的属性，我希望也能更新视图 [].__ob__.dep {}.__ob__.dep  => watcher  // vm.$set
+    this.dep = new Dep(); //  value 是对象和数组   value.__ob__.dep
     // 添加一个自定义属性绑定this, 方便在 array.js 中使用观察数组方法且不让 __ob__ 被遍历到， 否则就走对象劫持的逻辑了， 就会出现死循环
     Object.defineProperty(value, '__ob__', {
       value: this,
@@ -48,15 +52,31 @@ class Observer {
 // vue3中为了兼容 proxy 内部对数组用的就是 defineProperty
 // 正常用户修改数组，无非采用数组的变异方法， push, pop, splice, shift. unshift. reverse, sort
 
+function dependArray(value) { // [[[]], {}]  // 让数组里的引用类型都收集依赖
+  for (let i = 0; i < value.length; i++) {
+    const current = value[i];
+    current.__ob__ && current.__ob__.dep.depend();
+    if(Array.isArray(current)) {
+      dependArray(current)
+    }
+  }
+}
 function defineReactive(obj, key, value) { // vue2 慢的原因主要在这个方法中
-  observe(value) // 递归进行观测数据，不管有多少层，我都进行 defineProperty
+  const childOb = observe(value) // 递归进行观测数据，不管有多少层，我都进行 defineProperty
 
   let dep = new Dep()
   Object.defineProperty(obj, key, {
     get() {
       if(Dep.target) {
         dep.depend()
+        if(childOb) { // 取属性的时候会对对应的值（对象和数组）惊醒依赖收集
+          childOb.dep.depend();
+          if(Array.isArray(value)) {
+            dependArray(value)
+          }
+        }
       }
+      
       return value; // 闭包，此 value 会向上层的 value 进行查找
     },
     set(newValue) { // 如果设置的是一个对象那么会再次进行劫持
@@ -93,3 +113,12 @@ export function observe(value) {
 
   return new Observer(value)
 }
+
+/**
+ * 1. 默认 vue 在初始化的时候会对对象每一个属性都进行劫持，增加 dep 属性， 当取值的时候会做依赖收集
+ * 2. 默认还会对属性值是对象和数组的本身进行增加 dep 属性 进行依赖收集
+ * 3. 如果是属性变化触发属性对应的 dep 去更新
+ * 4. 如果是数组更新，触发数组的本身的 dep 进行更新
+ * 5. 如果取值的时候是数组还要让数组中的对象类型也进行依赖收集（递归依赖收集）
+ * 6. 如果数组里面方对象，默认对象里的属性是会进行依赖收集的，因为在取值时会进行 JSON.stringify 操作
+ */

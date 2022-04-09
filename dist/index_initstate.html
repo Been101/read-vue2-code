@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <div id="app"></div>
+  <script src="./vue.js"></script>
+  <script>
+    // vue 默认支持响应式数据变化 (双向绑定)
+    // 1. 双向绑定页面得需要能修改 (表单 radio checkbox input textarea) 数据变化可以影响视图显示
+    // 2. 响应式数据变化能监控到数据变化并且更新视图 (单向的)
+
+    // vue 模式并不是完全的 mvvm, vue 默认只是做视图的， 渐进式 + 组件化 + vue-router + vuex + vue-cli
+
+    // 要知道数据的变化是如何变化的， Object.defineProperty， 将对象中原有的属性更改成带有 get 和 set 的一个属性，这样当修改的时候会触发 set 方法 ==> 更新视图
+    const vm = new Vue({
+      el: '#app',
+      data: {
+        message: 'hello world',
+        arr: [{ name: 'hong' }]
+      }
+    })
+
+    console.log(vm)
+    vm.message
+    vm.message = { a: 100 }
+    vm.message.a = 200
+    vm.arr[0].name = 'ming' // 走对象的修改逻辑
+    vm.arr[1] = 100 // 如果操作的是数组的索引那么不会更新， 不能通过更改数组长度和索引（无法监控的）
+    // 数组的7哥方法都会触发更新
+
+    vm.arr.push({ age: 20 })
+    vm.arr[1].age = 30 // 这种情况下，也是需要更新视图的
+
+  </script>
+</body>
+
+</html>

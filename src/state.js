@@ -36,7 +36,6 @@ function initData(vm) {
   observe(data)
 
 
-  data.arr.push(1)
   for (const key in data) { // vm.message => vm._data.message
     proxy(vm, key, '_data')  // 引用类型
   }
