@@ -78,3 +78,9 @@ export function mergeOptions(parentVal, childVal) {
 
   return options;
 }
+
+// 看两个节点是不是相同节点，就看是不是 tag 和 key 都一样
+// Vue2 递归比对
+export function isSameVnode(newVnode, oldVnode) {
+  return (newVnode.tag === oldVnode.tag) && (newVnode.key === oldVnode.key)
+}
