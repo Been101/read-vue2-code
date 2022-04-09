@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <div id="app" style="color: red; background: yellow;">
+    <p>{{message}} <span>hello -{{name}} -world- {{age}}</span></p>
+    <div>{{name}}</div>
+    <div>{{arr}}</div>
+  </div>
+  <script src="./vue.js"></script>
+  <script>
+    // vue 默认支持响应式数据变化 (双向绑定)
+    // 1. 双向绑定页面得需要能修改 (表单 radio checkbox input textarea) 数据变化可以影响视图显示
+    // 2. 响应式数据变化能监控到数据变化并且更新视图 (单向的)
+
+    // vue 模式并不是完全的 mvvm, vue 默认只是做视图的， 渐进式 + 组件化 + vue-router + vuex + vue-cli
+
+    // 要知道数据的变化是如何变化的， Object.defineProperty， 将对象中原有的属性更改成带有 get 和 set 的一个属性，这样当修改的时候会触发 set 方法 ==> 更新视图
+    const vm = new Vue({
+      el: '#app',
+      data: {
+        message: 'hello world',
+        name: 'ming',
+        age: 21,
+        arr: [{ name: 'hong' }]
+      }
+    })
+
+    console.log(vm)
+    vm.message = { a: 100 }
+    // vm.message.a = 200
+    // vm.arr[0].name = 'ming' // 走对象的修改逻辑
+    // vm.arr[1] = 100 // 如果操作的是数组的索引那么不会更新， 不能通过更改数组长度和索引（无法监控的）
+    // 数组的7哥方法都会触发更新
+
+    // vm.arr.push({ age: 20 })
+    // vm.arr[1].age = 30 // 这种情况下，也是需要更新视图的
+
+    // ===========更新流程
+    // 一个属性对应一个 dep, 一个dep 对应多个 watcher, 一个 watcher 可以对应多个dep
+    // 对象更新流程
+
+    vm.name = 'jw';
+    vm.$nextTick(() => {
+      console.log(vm.$el, '<----vm.$el--是新的')
+    })
+    console.log(vm.$el, '<----vm.$el--是老的')
+    vm.arr.push(23)
+    // vm._update(vm._render()) // 如果数据变化了， 可以调用此方法， 就可以实现更新了
+    /**
+     * 只有根组件的情况， 每个属性都有一个 dep
+     * 1. vue 里面用到了观察者模式， 默认组件渲染的时候， 会创建一个 watcher , （并且会渲染视图）
+     * 2. 当渲染视图的时候， 会取 data 中的数据， 会走每个属性的 get 方法，就让这个属性的 dep 记录 watcher 
+     * 3. 同时让 watcher 也记住 dep ， dep 和 watcher 是多对多的关系， 因为一个属性可能对应多个视图，一个视图对应多个数据
+     * 4. 如果数据发生变化，会通知对应属性的 dep， 依次通知存放的 watcher 去更新。
+     * /
+
+
+
+
+
+    // ===================初渲染=================
+
+    /**
+     * 1. 默认会调用 Vue._init 方法将用户的参数挂载到 $options 选项中 vm.$options
+     * 2. vue 会根据用户的参数进行数据的初始化 props computed watch, 会获取到对象作为数据， 可以通过 vm._data 访问到用户的数据
+     * 3. 死哦数据进新股感测  对象（递归使用的 defineProperty), 数组 （方法的重写） 劫持到用户的操作， 比如用户修改了数据 -》 更新视图（性能问题）
+     * 4. 将数据代理到 vm 对象上 vm.xx => vm._data.xx
+     * 5. 判断用户是否传入了 el 属性， 内部会调用 $mount 方法， 此方法也可以用户自己调用
+     * 6. 对模板的优先级处理 render / template / outerHTML 
+     * 7. 将模板编译成函数  parserHTML 解析模板 -> ast 语法书， 解析语法树生成 code （codegen） -> render 函数
+     * 8.通过 render 方法生成虚拟 dom + 真实的数据 => 真实的 dom
+     * 9. 根据虚拟节点渲染成真实节点 
+     **/
+  </script>
+</body>
+
+</html>

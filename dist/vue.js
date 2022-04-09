@@ -4,6 +4,99 @@
   (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.Vue = factory());
 })(this, (function () { 'use strict';
 
+  function isFunction(fn) {
+    return typeof fn === 'function';
+  }
+  function isObject(val) {
+    return typeof val === 'object' && val !== null;
+  }
+  const isArray = Array.isArray;
+  let callbacks = [];
+  let waiting = false;
+
+  function flushCallbacks() {
+    callbacks.forEach(fn => fn());
+    callbacks = [];
+    waiting = false;
+  }
+
+  function nextTick(fn) {
+    callbacks.push(fn);
+
+    if (!waiting) {
+      Promise.resolve().then(flushCallbacks);
+      waiting = true;
+    }
+  } // 每使用依次 this.$nextTick 就会new 一个 promise
+  // export function nextTick(fn) { // vue3 里面的 nextTick 就是 promise， vue3 里面做了一些兼容性处理
+  //   return Promise.resolve().then(fn)
+  // }
+  // 覆盖合并 {a: 1} {b:1, a: 2} => {a: 2, b: 1}
+  // 组合合并 {a: 1} {b:1， a:2} => {b: a, a: [1,2]}
+
+  let strats = {}; // 存放所有策略
+
+  const lifeCycle = ['beforeCreate', 'created', 'beforeMount', 'mounted'];
+  lifeCycle.forEach(hook => {
+    strats[hook] = function (parentVal, childVal) {
+      if (childVal) {
+        if (parentVal) {
+          // 父 子 都有值 用父和子拼接在一起， 父有值就一定是数组
+          return parentVal.concat(childVal);
+        } else {
+          if (Array.isArray(childVal)) {
+            return childVal;
+          } else {
+            return [childVal]; // 如果没有值， 就会变成数组
+          }
+        }
+      } else {
+        return parentVal;
+      }
+    };
+  });
+  function mergeOptions(parentVal, childVal) {
+    const options = {};
+
+    for (const key in parentVal) {
+      mergeFiled(key);
+    }
+
+    for (const key in childVal) {
+      if (childVal.hasOwnProperty(key)) {
+        mergeFiled(key);
+      }
+    }
+
+    function mergeFiled(key) {
+      // 设计模式  策略模式
+      let strat = strats[key];
+
+      if (strat) {
+        options[key] = strat(parentVal[key], childVal[key]); // 合并两个值
+      } else {
+        options[key] = childVal[key] || parentVal[key];
+      }
+    }
+
+    return options;
+  }
+
+  function initGlobalAPI(Vue) {
+    Vue.options = {}; // 全局属性，在每个组件初始化的时候， 将这些属性放到每个组件上
+
+    Vue.mixin = function (options) {
+      Vue.options = mergeOptions(this.options, options);
+      console.log(Vue.options, '<---options');
+    };
+
+    Vue.component = function (options) {};
+
+    Vue.filter = function (options) {};
+
+    Vue.directive = function (options) {};
+  }
+
   const ncname = `[a-zA-Z_][\\-\\.0-9_a-zA-Z]*`; // 匹配标签名的 aa-xxx
 
   const qnameCapture = `((?:${ncname}\\:)?${ncname})`; // aa:aa-xxx
@@ -246,34 +339,6 @@
      * 4. diff 算法
      */
   }
-
-  function isFunction(fn) {
-    return typeof fn === 'function';
-  }
-  function isObject(val) {
-    return typeof val === 'object' && val !== null;
-  }
-  const isArray = Array.isArray;
-  let callbacks = [];
-  let waiting = false;
-
-  function flushCallbacks() {
-    callbacks.forEach(fn => fn());
-    callbacks = [];
-    waiting = false;
-  }
-
-  function nextTick(fn) {
-    callbacks.push(fn);
-
-    if (!waiting) {
-      Promise.resolve().then(flushCallbacks);
-      waiting = true;
-    }
-  } // 每使用依次 this.$nextTick 就会new 一个 promise
-  // export function nextTick(fn) { // vue3 里面的 nextTick 就是 promise， vue3 里面做了一些兼容性处理
-  //   return Promise.resolve().then(fn)
-  // }
 
   let oldArrayPrototype = Array.prototype; // 获取数组的老的原型方法
 
@@ -639,12 +704,15 @@
     // vue 初始化 dom 节点
     const updateComponent = () => {
       vm._update(vm._render());
-    }; // 每个组件都有一个 watcher, 我们把这个 watcher 称之为 渲染 watcher 
+    };
 
+    callHook(vm, 'beforeCreate'); // 每个组件都有一个 watcher, 我们把这个 watcher 称之为 渲染 watcher 
 
     new Watcher(vm, updateComponent, () => {
       console.log('后续增加更新钩子函数 update');
+      callHook(vm, 'created');
     }, true);
+    callHook(vm, 'mounted');
   }
   function lifeCycleMixin(Vue) {
     Vue.prototype._update = function (vnode) {
@@ -653,13 +721,23 @@
       vm.$el = patch(vm.$el, vnode);
     };
   }
+  function callHook(vm, hook) {
+    const handlers = vm.$options[hook];
+
+    if (handlers) {
+      handlers.forEach(hook => {
+        hook.call(vm); // 声明周期的 this 永远指向实例
+      });
+    }
+  }
 
   function initMixin(Vue) {
     // 后续组件开发的时候 Vue.extend 可以创造一个子组件，子组件可以继承 Vue, 子组件也可以调用 _init 方法
     Vue.prototype._init = function (options) {
       const vm = this; // 把用户的选项放到 vm 上， 这样在其他方法中都可以获取到 options 了
+      // vm.$options = options; // 为了后续扩展的方法都可以获取 $options 选项
 
-      vm.$options = options; // 为了后续扩展的方法都可以获取 $options 选项
+      vm.$options = mergeOptions(vm.constructor.options, options); // vm.constructor 是 Vue 或 继承自Vue 的子类
       // $options 中是用户传入的数据 el, data, watch ...
 
       initState(vm);
@@ -773,7 +851,8 @@
 
   initMixin(Vue);
   renderMixin(Vue);
-  lifeCycleMixin(Vue); // 导出 Vue 给别人用
+  lifeCycleMixin(Vue);
+  initGlobalAPI(Vue); // 导出 Vue 给别人用
   /**
    * 1. new Vue 会调用 _init 方法进行初始化操作
    * 2. 会将用户的选项放到 vm.$options 上
