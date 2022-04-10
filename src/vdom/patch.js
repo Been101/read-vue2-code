@@ -28,12 +28,95 @@ export function patch(oldVnode, vnode) {
       }
     }
 
-    // 元素，新的虚拟节点
+    // 元素，新的虚拟节点, 是相同节点了，复用节点，再更新不一样的地方（属性）
     updateProperties(vnode, oldVnode.data)
 
+    // 比较儿子节点
+
+    const oldChildren = oldVnode.children || [];
+    const newChildren = newChildren.children || [];
+
+    // 情况1， 老的有儿子， 新的没有儿子
+    if(oldChildren.length > 0 && newChildren.length === 0) {
+      el.innerHTML = '' // 暴力清空，
+    }else if(newChildren.length > 0 && oldChildren.length === 0) {
+      // 新的有儿子， 老的没有儿子， 直接将新的插入即可
+      newChildren.forEach(child => el.appendChild(createElm(child))) // 尽量不要一个一个的插入， 可以同片段，一次插入
+    }else {
+      // 新老都有儿子
+      updateChildren(el, oldChildren, newChildren)
+    }
 
   }
   
+}
+
+
+function updateChildren(el, oldChildren, newChildren) {
+  // vue2 如何做 diff 算法
+
+  // vue 内部做了优化（能尽量提升性能，如果实在不行， 再暴力比对）
+  // 1. 在列表中新增和删除的情况
+  let oldStartIndex = 0;
+  let oldStartVnode = oldChildren[0]
+  let oldEndIndex = oldChildren.length - 1
+  let oldEndVnode = oldChildren[oldEndIndex]
+
+  let newStartIndex = 0;
+  let newStartVnode = newChildren[0]
+  let newEndIndex = newChildren.length - 1
+  let newEndVnode = newChildren[newEndIndex]
+
+  // diff 算法的复杂度是 O(n), 比对的时候 指针交叉的时候就是比对完成
+
+  while (oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex) {
+    if(isSameVnode(oldStartVnode, newStartVnode)) {
+      patch(oldStartVnode, newStartVnode); // 会递归比较自杰斯按， 同时比对这两个的差异
+      oldStartVnode = oldChildren[++oldStartIndex]
+      newStartVnode = newChildren[++newStartIndex]
+    }else if(isSameVnode(oldEndVnode, newEndVnode)) {
+      patch(oldEndVnode, newEndVnode); // 会递归比较自杰斯按， 同时比对这两个的差异
+      oldEndVnode = oldChildren[++oldEndIndex]
+      newEndVnode = newChildren[++newEndIndex]
+    }else if(isSameVnode(oldStartVnode, newEndVnode)) { // 老的第一个和新和最后一个一样
+      patch(oldStartVnode, newEndVnode)
+        // 把老的第一个节点插到， 老的最后一个节点的下一个节点之前
+      el.insertBefore(oldStartVnode.el, oldEndVnode.el.nextSibling) // 先移动dom 节点， 再移动指针
+      oldStartVnode = oldChildren[++oldStartIndex];
+      newEndVnode = newChildren[--newEndIndex];
+    } else if(isSameVnode(oldEndVnode, newStartVnode)) { // 老的第一个和新和最后一个一样
+      patch(oldEndVnode, newStartVnode)
+        // 把老的最后一个节点插到老的第一个节点之前
+      el.insertBefore(oldEndVnode.el, oldStartVnode.el) // 先移动dom 节点， 再移动指针
+      oldEndVnode = oldChildren[--oldEndIndex];
+      oldStartVnode = newChildren[++newEndIndex];
+    } else {
+      // 之前的逻辑都是考虑用户一些特殊情况， 但是有非特殊的， 乱排序
+    }
+  }
+
+  if(newStartIndex <= newEndIndex) {
+     // 看一下，当前节点的下一个元素是否存在， 如果存在则是插入到下一个元素的前面。
+      // 如果下一个是 null, 就是 appendChild
+      let anchor = newChildren[newEndIndex + 1] === null ? null : newChildren[newEndIndex + 1].el;  // 参照物是不变的
+      // newChildren[newEndIndex + 1].el  要插在这个节点的前面
+    for (let i = newStartIndex; i <= newEndIndex; i++) {
+      // 这里可能是向前追加， 可能是向后追加
+      el.insertBefore(createElm(newChildren[i]), anchor) // 尽量不要一个一个的插入， 可以同片段，一次插入
+    }
+  }
+
+  if(oldStartIndex <= oldEndIndex) {
+    // 老的多，新的少
+    // 把多余的删掉
+    for (let i = oldStartIndex; i <= oldEndIndex; i++) {
+      const child =  oldChildren[i];
+      el.removeChild(child.el)
+    }
+  }
+
+
+
 }
 
 
