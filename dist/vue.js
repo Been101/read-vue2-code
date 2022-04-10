@@ -489,6 +489,7 @@
             childOb.dep.depend();
 
             if (Array.isArray(value)) {
+              // 如果是数组会递归收集依赖
               dependArray(value);
             }
           }
@@ -700,7 +701,7 @@
       updateProperties(vnode, oldVnode.data); // 比较儿子节点
 
       const oldChildren = oldVnode.children || [];
-      const newChildren = newChildren.children || []; // 情况1， 老的有儿子， 新的没有儿子
+      const newChildren = vnode.children || []; // 情况1， 老的有儿子， 新的没有儿子
 
       if (oldChildren.length > 0 && newChildren.length === 0) {
         el.innerHTML = ''; // 暴力清空，
@@ -711,6 +712,8 @@
         // 新老都有儿子
         updateChildren(el, oldChildren, newChildren);
       }
+
+      return el;
     }
   }
 
@@ -725,10 +728,24 @@
     let newStartIndex = 0;
     let newStartVnode = newChildren[0];
     let newEndIndex = newChildren.length - 1;
-    let newEndVnode = newChildren[newEndIndex]; // diff 算法的复杂度是 O(n), 比对的时候 指针交叉的时候就是比对完成
+    let newEndVnode = newChildren[newEndIndex]; // 乱序时使用
+
+    function makeKeyByIndex() {
+      const map = {};
+      oldChildren.forEach((item, index) => {
+        map[item.key] = index;
+      });
+      return map;
+    }
+
+    const mapping = makeKeyByIndex(); // diff 算法的复杂度是 O(n), 比对的时候 指针交叉的时候就是比对完成
 
     while (oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex) {
-      if (isSameVnode(oldStartVnode, newStartVnode)) {
+      if (!oldStartVnode) {
+        oldStartVnode = oldChildren[++oldStartIndex]; // 乱序时， 当把复用的元素置为 undefined 的话， 指针移动需要跨过为 undefined 的节点
+      } else if (!oldEndVnode) {
+        oldEndVnode = oldChildren[++oldEndIndex]; // 乱序时， 当把复用的元素置为 undefined 的话， 指针移动需要跨过为 undefined 的节点
+      } else if (isSameVnode(oldStartVnode, newStartVnode)) {
         patch(oldStartVnode, newStartVnode); // 会递归比较自杰斯按， 同时比对这两个的差异
 
         oldStartVnode = oldChildren[++oldStartIndex];
@@ -754,7 +771,27 @@
 
         oldEndVnode = oldChildren[--oldEndIndex];
         oldStartVnode = newChildren[++newEndIndex];
-      } else ;
+      } else {
+        // 之前的逻辑都是考虑用户一些特殊情况， 但是有非特殊的， 乱排序
+        let moveIndex = mapping[newStartVnode.key];
+
+        if (moveIndex === undefined) {
+          // 没有，就直接将节点插入到开头的前面
+          el.insertBefore(createElm(newStartVnode), oldStartVnode.el);
+        } else {
+          // 有的话需要复用。如 B节点
+          let moveVnode = oldChildren[moveIndex]; // 找到复用的节点
+
+          el.insertBefore(moveVnode.el, oldStartVnode.el); // 移动到开头节点的前面
+          // 还要比对属性
+
+          patch(moveVnode, newStartVnode); // 还要把这个复用的节点，原来的位置设为 undefined, 防止老节点顺序错乱
+
+          oldChildren[moveIndex] = undefined;
+        }
+
+        newStartVnode = newChildren[++newStartIndex]; // moveIndex 有没有值， newStartIndex 的都会向后移动
+      }
     }
 
     if (newStartIndex <= newEndIndex) {
@@ -773,8 +810,9 @@
       // 老的多，新的少
       // 把多余的删掉
       for (let i = oldStartIndex; i <= oldEndIndex; i++) {
-        const child = oldChildren[i];
-        el.removeChild(child.el);
+        const child = oldChildren[i]; // 因为乱序的时候 child 可能是 undefined ，所以要跳过空节点
+
+        child && el.removeChild(child.el);
       }
     }
   } // 面试有问  虚拟节点的实现 -> 如何将虚拟节点渲染成真实节点
@@ -855,10 +893,17 @@
   function lifeCycleMixin(Vue) {
     Vue.prototype._update = function (vnode) {
       // 采用的是先序深度遍历  创建节点 （遇到节点就创建节点， 递归创建）
-      const vm = this; // 第一次渲染是根据虚拟节点生成真实节点， 替换掉原来的节点
-      // 如果是第二次 生成一个新的虚拟节点和老的虚拟节点进行对比
+      const vm = this;
+      let preVnode = vm._prevVnode; // 第一次渲染是根据虚拟节点生成真实节点， 替换掉原来的节点
 
-      vm.$el = patch(vm.$el, vnode);
+      vm._prevVnode = vnode; // 如果是第二次 生成一个新的虚拟节点和老的虚拟节点进行对比
+
+      if (!preVnode) {
+        // 没有节点就是初次渲染
+        vm.$el = patch(vm.$el, vnode);
+      } else {
+        vm.$el = patch(preVnode, vnode);
+      }
     };
   }
   function callHook(vm, hook) {

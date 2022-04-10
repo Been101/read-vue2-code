@@ -71,7 +71,7 @@ function defineReactive(obj, key, value) { // vue2 慢的原因主要在这个�
         dep.depend()
         if(childOb) { // 取属性的时候会对对应的值（对象和数组）惊醒依赖收集
           childOb.dep.depend();
-          if(Array.isArray(value)) {
+          if(Array.isArray(value)) {// 如果是数组会递归收集依赖
             dependArray(value)
           }
         }

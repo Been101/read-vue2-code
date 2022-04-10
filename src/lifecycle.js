@@ -22,12 +22,16 @@ export function lifeCycleMixin(Vue) {
     // 采用的是先序深度遍历  创建节点 （遇到节点就创建节点， 递归创建）
 
     const vm = this;
+    let preVnode = vm._prevVnode;
 
     // 第一次渲染是根据虚拟节点生成真实节点， 替换掉原来的节点
-
+    vm._prevVnode = vnode
     // 如果是第二次 生成一个新的虚拟节点和老的虚拟节点进行对比
-
-    vm.$el = patch(vm.$el, vnode)
+    if(!preVnode) { // 没有节点就是初次渲染
+      vm.$el = patch(vm.$el, vnode)
+    }else {
+      vm.$el = patch(preVnode, vnode)
+    }
   }
 }
 
